@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { supabase } from '../../lib/supabaseClient';
 
 export default function DashboardPage() {
@@ -80,12 +81,23 @@ export default function DashboardPage() {
       </div>
 
       <div className="dashboard-wrap">
-        <h2 style={{ color: 'var(--primary)', marginBottom: 4 }}>
-          خوش آمدید، {fullName}
-        </h2>
-        <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
-          خلاصه‌ی وضعیت دانش‌آموزان شما
-        </p>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
+          <div>
+            <h2 style={{ color: 'var(--primary)', marginBottom: 4 }}>
+              خوش آمدید، {fullName}
+            </h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>
+              خلاصه‌ی وضعیت دانش‌آموزان شما
+            </p>
+          </div>
+          <Link
+            href="/students"
+            className="btn-primary"
+            style={{ textDecoration: 'none', width: 'auto', padding: '10px 20px', display: 'inline-block' }}
+          >
+            مدیریت دانش‌آموزان
+          </Link>
+        </div>
 
         <div className="stat-grid">
           <div className="stat-card">
