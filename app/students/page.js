@@ -95,6 +95,19 @@ export default function StudentsPage() {
                 <div className="label">کد: {s.student_code || '—'}</div>
                 <div className="label">پایه: {s.grade || '—'}</div>
                 <div className="label">وضعیت: {s.is_active ? 'فعال' : 'غیرفعال'}</div>
+                <Link
+                  href={`/students/plan?id=${s.id}`}
+                  style={{
+                    display: 'inline-block',
+                    marginTop: 10,
+                    fontSize: 13,
+                    color: 'var(--primary)',
+                    fontWeight: 600,
+                    textDecoration: 'none',
+                  }}
+                >
+                  برنامه‌ریزی ←
+                </Link>
               </div>
             ))}
           </div>
