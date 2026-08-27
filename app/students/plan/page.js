@@ -5,6 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabaseClient';
 
+const WEEKDAY_NAMES = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
+const SLOT_COUNT = 7;
+
 function PlanContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -18,12 +21,9 @@ function PlanContent() {
 
   const [form, setForm] = useState({
     title: '',
-    subject: '',
     activityDate: '',
-    startTime: '',
-    endTime: '',
-    description: '',
-    priority: 'normal',
+    slotNumber: '1',
+    durationMinutes: '',
   });
 
   useEffect(() => {
@@ -57,7 +57,6 @@ function PlanContent() {
     }
 
     setStudentName(studentRow.profiles?.full_name || '');
-
     await loadActivities();
     setLoading(false);
   }
@@ -86,13 +85,11 @@ function PlanContent() {
     const { error } = await supabase.from('activities').insert({
       student_id: studentId,
       title: form.title,
-      subject: form.subject || null,
       activity_date: form.activityDate,
-      start_time: form.startTime || null,
-      end_time: form.endTime || null,
-      description: form.description || null,
-      priority: form.priority,
+      slot_number: parseInt(form.slotNumber, 10),
+      duration_minutes: form.durationMinutes ? parseInt(form.durationMinutes, 10) : null,
       status: 'not_done',
+      priority: 'normal',
     });
 
     if (error) {
@@ -101,26 +98,19 @@ function PlanContent() {
       return;
     }
 
-    setForm({
-      title: '',
-      subject: '',
-      activityDate: '',
-      startTime: '',
-      endTime: '',
-      description: '',
-      priority: 'normal',
-    });
-
+    setForm((prev) => ({ ...prev, title: '', durationMinutes: '' }));
     await loadActivities();
     setSubmitting(false);
   }
 
-  const statusLabels = {
-    not_done: 'انجام نشده',
-    in_progress: 'در حال انجام',
-    done: 'انجام شده',
-    incomplete: 'ناقص',
-  };
+  function weekdayName(dateStr) {
+    const d = new Date(dateStr + 'T00:00:00');
+    return WEEKDAY_NAMES[d.getDay()];
+  }
+
+  const uniqueDates = [...new Set(activities.map((a) => a.activity_date))].sort();
+  const maxSlot = Math.max(SLOT_COUNT, ...activities.map((a) => a.slot_number || 0));
+  const slotColumns = Array.from({ length: maxSlot }, (_, i) => i + 1);
 
   if (loading) return <div className="loading-text">در حال بارگذاری...</div>;
 
@@ -143,100 +133,146 @@ function PlanContent() {
             </h2>
 
             <div className="card" style={{ maxWidth: 500, marginBottom: 32 }}>
-              <h1 style={{ fontSize: 16 }}>افزودن فعالیت جدید</h1>
+              <h1 style={{ fontSize: 16 }}>افزودن یک خانه به برنامه</h1>
+              <p className="subtitle">هر بار یک درس در یک خانه از یک روز مشخص ثبت کنید</p>
               {errorMsg && <div className="error-box">{errorMsg}</div>}
               <form onSubmit={handleSubmit}>
                 <div className="field">
-                  <label>عنوان فعالیت</label>
+                  <label>نام درس / فعالیت</label>
                   <input value={form.title} onChange={(e) => updateField('title', e.target.value)} required />
-                </div>
-                <div className="field">
-                  <label>درس یا حوزه (اختیاری)</label>
-                  <input value={form.subject} onChange={(e) => updateField('subject', e.target.value)} />
-                </div>
-                <div className="field">
-                  <label>تاریخ</label>
-                  <input
-                    type="date"
-                    value={form.activityDate}
-                    onChange={(e) => updateField('activityDate', e.target.value)}
-                    required
-                    dir="ltr"
-                  />
                 </div>
                 <div style={{ display: 'flex', gap: 12 }}>
                   <div className="field" style={{ flex: 1 }}>
-                    <label>ساعت شروع</label>
+                    <label>تاریخ (روز)</label>
                     <input
-                      type="time"
-                      value={form.startTime}
-                      onChange={(e) => updateField('startTime', e.target.value)}
+                      type="date"
+                      value={form.activityDate}
+                      onChange={(e) => updateField('activityDate', e.target.value)}
+                      required
                       dir="ltr"
                     />
                   </div>
-                  <div className="field" style={{ flex: 1 }}>
-                    <label>ساعت پایان</label>
+                  <div className="field" style={{ width: 110 }}>
+                    <label>شماره خانه</label>
                     <input
-                      type="time"
-                      value={form.endTime}
-                      onChange={(e) => updateField('endTime', e.target.value)}
+                      type="number"
+                      min="1"
+                      max="12"
+                      value={form.slotNumber}
+                      onChange={(e) => updateField('slotNumber', e.target.value)}
+                      required
                       dir="ltr"
                     />
                   </div>
                 </div>
                 <div className="field">
-                  <label>اولویت</label>
-                  <select
-                    value={form.priority}
-                    onChange={(e) => updateField('priority', e.target.value)}
-                    style={{
-                      width: '100%',
-                      padding: '10px 12px',
-                      borderRadius: 8,
-                      border: '1px solid var(--border)',
-                      fontFamily: 'inherit',
-                      fontSize: 14,
-                      background: '#fbfcfe',
-                    }}
-                  >
-                    <option value="low">کم</option>
-                    <option value="normal">متوسط</option>
-                    <option value="high">بالا</option>
-                  </select>
-                </div>
-                <div className="field">
-                  <label>توضیحات (اختیاری)</label>
-                  <input value={form.description} onChange={(e) => updateField('description', e.target.value)} />
+                  <label>مدت زمان (دقیقه)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    value={form.durationMinutes}
+                    onChange={(e) => updateField('durationMinutes', e.target.value)}
+                    dir="ltr"
+                  />
                 </div>
                 <button className="btn-primary" type="submit" disabled={submitting}>
-                  {submitting ? 'در حال ثبت...' : 'افزودن فعالیت'}
+                  {submitting ? 'در حال ثبت...' : 'افزودن به برنامه'}
                 </button>
               </form>
             </div>
 
             <h2 style={{ color: 'var(--primary)', fontSize: 17, marginBottom: 12 }}>
-              فعالیت‌های ثبت‌شده
+              جدول برنامه
             </h2>
 
-            {activities.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)' }}>هنوز فعالیتی ثبت نشده است.</p>
+            {uniqueDates.length === 0 ? (
+              <p style={{ color: 'var(--text-muted)' }}>هنوز خانه‌ای ثبت نشده است.</p>
             ) : (
-              <div className="stat-grid">
-                {activities.map((a) => (
-                  <div className="stat-card" key={a.id}>
-                    <div style={{ fontWeight: 700, color: 'var(--primary)', marginBottom: 6 }}>
-                      {a.title}
-                    </div>
-                    <div className="label">تاریخ: {a.activity_date}</div>
-                    {a.subject && <div className="label">درس: {a.subject}</div>}
-                    {a.start_time && (
-                      <div className="label">
-                        ساعت: {a.start_time?.slice(0, 5)} تا {a.end_time?.slice(0, 5) || '—'}
-                      </div>
-                    )}
-                    <div className="label">وضعیت: {statusLabels[a.status] || a.status}</div>
-                  </div>
-                ))}
+              <div style={{ overflowX: 'auto' }}>
+                <table
+                  style={{
+                    borderCollapse: 'collapse',
+                    width: '100%',
+                    minWidth: 700,
+                    background: 'var(--card-bg)',
+                    fontSize: 13,
+                  }}
+                >
+                  <thead>
+                    <tr>
+                      <th
+                        style={{
+                          background: 'var(--primary)',
+                          color: 'white',
+                          padding: '10px 8px',
+                          border: '1px solid var(--border)',
+                        }}
+                      >
+                        روز
+                      </th>
+                      {slotColumns.map((slot) => (
+                        <th
+                          key={slot}
+                          style={{
+                            background: '#3d6a9e',
+                            color: 'white',
+                            padding: '10px 8px',
+                            border: '1px solid var(--border)',
+                          }}
+                        >
+                          خانه {slot}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {uniqueDates.map((date) => (
+                      <tr key={date}>
+                        <td
+                          style={{
+                            background: 'var(--primary)',
+                            color: 'white',
+                            padding: '10px 8px',
+                            border: '1px solid var(--border)',
+                            fontWeight: 700,
+                            textAlign: 'center',
+                          }}
+                        >
+                          {weekdayName(date)}
+                          <div style={{ fontSize: 11, fontWeight: 400 }}>{date}</div>
+                        </td>
+                        {slotColumns.map((slot) => {
+                          const cell = activities.find(
+                            (a) => a.activity_date === date && a.slot_number === slot
+                          );
+                          return (
+                            <td
+                              key={slot}
+                              style={{
+                                padding: '8px',
+                                border: '1px solid var(--border)',
+                                textAlign: 'center',
+                              }}
+                            >
+                              {cell ? (
+                                <>
+                                  <div>{cell.title}</div>
+                                  {cell.duration_minutes && (
+                                    <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                      {cell.duration_minutes}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                ''
+                              )}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </>
