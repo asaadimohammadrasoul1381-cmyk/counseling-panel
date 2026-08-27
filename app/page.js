@@ -16,8 +16,13 @@ export default function LoginPage() {
     setErrorMsg('');
     setLoading(true);
 
+    let loginEmail = email.trim();
+    if (!loginEmail.includes('@')) {
+      loginEmail = `${loginEmail}@students.counseling-panel.local`;
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
-      email,
+      email: loginEmail,
       password,
     });
 
@@ -58,9 +63,9 @@ export default function LoginPage() {
 
         <form onSubmit={handleLogin}>
           <div className="field">
-            <label>ایمیل</label>
+            <label>ایمیل (مشاور) یا نام کاربری (دانش‌آموز)</label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
